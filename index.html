@@ -94,12 +94,83 @@
   .money-box.debe-mal { background:#fee2e2; }
   .money-box.debe-mal .amount { color:#b91c1c; }
   .modal-close { position:absolute; top:18px; right:18px; background:#f1f5f9; border:none; border-radius:50%; width:32px; height:32px; font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; color:#64748b; font-family:var(--font); }
+
+  /* ── LOGIN ── */
+  #loginScreen {
+    position:fixed; inset:0; background:#1e293b;
+    display:flex; align-items:center; justify-content:center;
+    z-index:999; padding:24px;
+  }
+  #loginScreen.hidden { display:none; }
+  .login-card {
+    background:white; border-radius:20px; padding:32px 28px 36px;
+    width:100%; max-width:360px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);
+  }
+  .login-logo  { font-size:40px; text-align:center; margin-bottom:6px; }
+  .login-title { font-size:20px; font-weight:700; text-align:center; color:#1e293b; }
+  .login-sub   { font-size:13px; color:#94a3b8; text-align:center; margin-bottom:28px; margin-top:4px; }
+  .login-label { font-size:12px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; display:block; }
+  .login-field { margin-bottom:18px; }
+  .login-select, .login-input {
+    width:100%; padding:12px 14px; border:2px solid #e2e8f0; border-radius:10px;
+    font-size:15px; font-family:var(--font); color:#1e293b; outline:none;
+    background:white; appearance:none; -webkit-appearance:none;
+    transition:border-color .2s;
+  }
+  .login-select:focus, .login-input:focus { border-color:#1e293b; }
+  .select-wrap { position:relative; }
+  .select-wrap::after { content:'▾'; position:absolute; right:14px; top:50%; transform:translateY(-50%); color:#94a3b8; pointer-events:none; font-size:16px; }
+  .login-btn {
+    width:100%; padding:14px; background:#1e293b; color:white;
+    border:none; border-radius:10px; font-size:16px; font-weight:700;
+    font-family:var(--font); cursor:pointer; margin-top:6px;
+    transition:background .2s;
+  }
+  .login-btn:active { background:#334155; }
+  .login-btn:disabled { background:#94a3b8; cursor:not-allowed; }
+  .login-error { color:#b91c1c; font-size:13px; font-weight:600; text-align:center; margin-top:14px; min-height:18px; }
+  .login-user-pill {
+    display:inline-flex; align-items:center; gap:6px;
+    background:rgba(255,255,255,.15); border-radius:20px;
+    padding:3px 10px 3px 7px; font-size:12px; color:white; font-weight:600;
+    cursor:pointer; margin-left:8px; vertical-align:middle; border:none;
+    font-family:var(--font);
+  }
+  .login-user-pill:hover { background:rgba(255,255,255,.25); }
 </style>
 </head>
 <body>
 
+<!-- ── PANTALLA DE LOGIN ── -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo">🎪</div>
+    <div class="login-title">Feria Mayo 2026</div>
+    <div class="login-sub">Mapa de Stands</div>
+
+    <div class="login-field">
+      <label class="login-label" for="loginUser">Usuario</label>
+      <div class="select-wrap">
+        <select id="loginUser" class="login-select">
+          <option value="">Cargando usuarios...</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="login-field">
+      <label class="login-label" for="loginPass">Contraseña</label>
+      <input id="loginPass" type="password" class="login-input" placeholder="Ingresá tu contraseña"
+        onkeydown="if(event.key==='Enter') doLogin()">
+    </div>
+
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="loginError"></div>
+  </div>
+</div>
+
 <header>
-  <h1>🎪 Mapa de Stands — Feria Mayo 2026 v8.1</h1>
+  <h1>🎪 Mapa de Stands — Feria Mayo 2026 v8.1 <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">👤 <span id="userPillName"></span> · Salir</button></h1>
   <p id="subtitle">Sincronizando datos...</p>
 </header>
 
@@ -427,7 +498,76 @@ function centerMap() {
     inner.style.marginLeft=cw<container.clientWidth?(container.clientWidth-cw)/2+'px':'0px';
   });
 }
-load();
+// ── LOGIN ────────────────────────────────────────────────────────────────────
+let CURRENT_USER = null;
+
+async function initLogin() {
+  // ¿Ya hay sesión activa?
+  const saved = sessionStorage.getItem('feriaUser');
+  if (saved) {
+    activarSesion(saved);
+    return;
+  }
+  // Cargar lista de usuarios para el combo
+  try {
+    const res  = await fetch(API_URL + '?tipo=usuarios');
+    const data = await res.json();
+    const sel  = document.getElementById('loginUser');
+    if (data.ok && data.usuarios.length) {
+      sel.innerHTML = '<option value="">— Elegí tu usuario —</option>' +
+        data.usuarios.map(u => `<option value="${u}">${u}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">Error al cargar usuarios</option>';
+    }
+  } catch(err) {
+    document.getElementById('loginUser').innerHTML = '<option value="">Error de conexión</option>';
+  }
+}
+
+async function doLogin() {
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value.trim();
+  const errEl = document.getElementById('loginError');
+  const btn   = document.getElementById('loginBtn');
+
+  errEl.textContent = '';
+  if (!user) { errEl.textContent = 'Seleccioná un usuario'; return; }
+  if (!pass) { errEl.textContent = 'Ingresá tu contraseña'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Verificando...';
+  try {
+    const res  = await fetch(`${API_URL}?tipo=login&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
+    const data = await res.json();
+    if (data.ok) {
+      sessionStorage.setItem('feriaUser', data.user);
+      activarSesion(data.user);
+    } else {
+      errEl.textContent = data.error || 'Usuario o contraseña incorrectos';
+    }
+  } catch(err) {
+    errEl.textContent = 'Error de conexión. Intentá de nuevo.';
+  }
+  btn.disabled = false;
+  btn.textContent = 'Ingresar';
+}
+
+function activarSesion(user) {
+  CURRENT_USER = user;
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('userPillName').textContent = user;
+  document.getElementById('userPill').style.display = 'inline-flex';
+  load(); // carga el mapa recién después del login
+}
+
+function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión?')) return;
+  sessionStorage.removeItem('feriaUser');
+  location.reload();
+}
+
+initLogin();
+
 </script>
 </body>
 </html>
