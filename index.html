@@ -429,9 +429,9 @@ async function load() {
     const ferData = await resFeriantes.json();
     if (ferData.ok && ferData.feriantes) {
       FERIANTES_LIST = ferData.feriantes;
-      const sel = document.getElementById('assignSelect');
-      sel.innerHTML = '<option value="">— Seleccioná un feriante —</option>' +
-        FERIANTES_LIST.map(f => `<option value="${f}">${f}</option>`).join('');
+      // ❌ ELIMINADO:
+      // const sel = document.getElementById('assignSelect');
+      // sel.innerHTML = ...
     }
     buildGrid('grid-pb', FULL_DATA.pbData);
     buildGrid('grid-pa', FULL_DATA.paData);
