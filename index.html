@@ -206,6 +206,15 @@
   .assign-msg.ok  { color:#15803d; }
   .assign-msg.err { color:#b91c1c; }
 
+  /* ── MODAL: desktop fix (centered, scrollable, rounded) ── */
+  @media (min-width: 640px) {
+    .modal-overlay { align-items:center; }
+    .modal {
+      border-radius:18px; max-height:90vh; overflow-y:auto;
+      padding-bottom:28px;
+    }
+  }
+
   /* ── PAGOS ── */
   .pagos-section {
     margin-top:16px; padding:14px 16px;
@@ -896,6 +905,21 @@ async function cargarMediosPago() {
   } catch(e) { MEDIOS_PAGO = []; }
 }
 
+function formatFecha(val) {
+  if (!val) return '';
+  // Si ya viene como "DD/MM/YY HH:MM" desde el script (cadena), la usamos directo
+  if (typeof val === 'string' && /^\d{2}\/\d{2}\/\d{2,4}/.test(val)) return val;
+  // Si es Date, timestamp de Sheets (número) o ISO string lo parseamos
+  const d = new Date(val);
+  if (isNaN(d)) return String(val);
+  const dd   = String(d.getDate()).padStart(2,'0');
+  const mm   = String(d.getMonth()+1).padStart(2,'0');
+  const aaaa = d.getFullYear();
+  const hh   = String(d.getHours()).padStart(2,'0');
+  const min  = String(d.getMinutes()).padStart(2,'0');
+  return `${dd}/${mm}/${aaaa} ${hh}:${min}`;
+}
+
 function renderPagos(extra) {
   const pagos = [
     { num:1, monto:extra.p1m, fecha:extra.p1f, resp:extra.p1r, medio:extra.p1med },
@@ -906,11 +930,12 @@ function renderPagos(extra) {
   const listEl = document.getElementById('pagosList');
   listEl.innerHTML = pagos.map(p => {
     const cargado = p.monto !== undefined && p.monto !== null && p.monto !== '' && Number(p.monto) > 0;
+    const fechaFmt = formatFecha(p.fecha);
     return `<div class="pago-item ${cargado ? 'cargado' : ''}">
       <div class="pago-num">${p.num}</div>
       <div class="pago-info">
         <div class="pago-estado">${cargado ? 'Pagado' : 'Pendiente'}</div>
-        ${cargado ? `<div class="pago-detalle">${p.fecha||''} · ${p.resp||''} · ${p.medio||''}</div>` : ''}
+        ${cargado ? `<div class="pago-detalle">${fechaFmt}${p.resp ? ' · '+p.resp : ''}${p.medio ? ' · '+p.medio : ''}</div>` : ''}
       </div>
       ${cargado ? `<div class="pago-monto">$${Number(p.monto).toLocaleString('es-AR')}</div>` : ''}
     </div>`;
@@ -969,10 +994,11 @@ async function cargarPago() {
       msgEl.className   = 'pago-msg ok';
 
       if (!FULL_DATA.extraData[currentStandId]) FULL_DATA.extraData[currentStandId] = {};
-      const ex = FULL_DATA.extraData[currentStandId];
-      const k  = `p${pagoNumActual}`;
+      const ex  = FULL_DATA.extraData[currentStandId];
+      const k   = `p${pagoNumActual}`;
+      const now = new Date();
       ex[`${k}m`]   = monto;
-      ex[`${k}f`]   = new Date().toLocaleDateString('es-AR');
+      ex[`${k}f`]   = formatFecha(now);
       ex[`${k}r`]   = CURRENT_USER;
       ex[`${k}med`] = medio;
       ex.d          = Math.max(0, (Number(ex.d)||0) - monto);
