@@ -205,6 +205,56 @@
   .assign-msg { font-size:13px; font-weight:600; text-align:center; margin-top:8px; min-height:16px; }
   .assign-msg.ok  { color:#15803d; }
   .assign-msg.err { color:#b91c1c; }
+
+  /* ── PAGOS ── */
+  .pagos-section {
+    margin-top:16px; padding:14px 16px;
+    background:#fffbeb; border:1.5px solid #f59e0b; border-radius:12px;
+  }
+  .pagos-title {
+    font-size:12px; font-weight:700; color:#92400e;
+    text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px;
+  }
+  .pagos-list { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .pago-item {
+    display:flex; align-items:center; gap:10px; padding:9px 12px;
+    background:white; border-radius:8px; border:1.5px solid #e2e8f0;
+  }
+  .pago-item.cargado { border-color:#86efac; background:#f0fdf4; }
+  .pago-num {
+    width:22px; height:22px; border-radius:50%; background:#f59e0b; color:white;
+    font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .pago-item.cargado .pago-num { background:#22c55e; }
+  .pago-info { flex:1; min-width:0; }
+  .pago-estado { font-size:12px; font-weight:600; color:#64748b; }
+  .pago-item.cargado .pago-estado { color:#15803d; }
+  .pago-detalle { font-size:11px; color:#94a3b8; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pago-monto { font-size:15px; font-weight:700; color:#15803d; }
+  .pago-form { display:flex; flex-direction:column; gap:10px; }
+  .pago-form-title { font-size:13px; font-weight:700; color:#92400e; }
+  .pago-input-row { display:flex; gap:8px; }
+  .pago-input-group { flex:1; display:flex; flex-direction:column; gap:4px; }
+  .pago-label { font-size:11px; font-weight:600; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
+  .pago-input, .pago-select {
+    width:100%; padding:9px 12px; border:2px solid #fde68a; border-radius:8px;
+    font-size:14px; font-family:var(--font); color:#1e293b; outline:none;
+    background:white; transition:border-color .2s; appearance:none; -webkit-appearance:none;
+  }
+  .pago-input:focus, .pago-select:focus { border-color:#f59e0b; }
+  .pago-select-wrap { position:relative; }
+  .pago-select-wrap::after { content:'▾'; position:absolute; right:10px; top:50%; transform:translateY(-50%); color:#94a3b8; pointer-events:none; }
+  .pago-btn {
+    width:100%; padding:10px; background:#f59e0b; color:white;
+    border:none; border-radius:8px; font-size:14px; font-weight:700;
+    font-family:var(--font); cursor:pointer; transition:background .2s;
+  }
+  .pago-btn:active { background:#d97706; }
+  .pago-btn:disabled { background:#fcd34d; cursor:not-allowed; color:#92400e; }
+  .pago-msg { font-size:13px; font-weight:600; text-align:center; min-height:16px; }
+  .pago-msg.ok  { color:#15803d; }
+  .pago-msg.err { color:#b91c1c; }
 </style>
 </head>
 <body>
@@ -237,7 +287,7 @@
 </div>
 
 <header>
-  <h1>🎪 Mapa de Stands — Feria Mayo 2026 v8.2 <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">👤 <span id="userPillName"></span> · Salir</button></h1>
+  <h1>🎪 Mapa de Stands — Feria Mayo 2026 v8.1 <button class="login-user-pill" id="userPill" onclick="cerrarSesion()" style="display:none">👤 <span id="userPillName"></span> · Salir</button></h1>
   <p id="subtitle">Sincronizando datos...</p>
 </header>
 
@@ -403,6 +453,31 @@
       </div>
       <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()" disabled>Asignar</button>
       <div class="assign-msg" id="assignMsg"></div>
+    </div>
+
+    <!-- CARGAR PAGO (solo cuando el stand está Señado) -->
+    <div class="pagos-section" id="pagosSection" style="display:none">
+      <div class="pagos-title">💳 Pagos</div>
+      <div class="pagos-list" id="pagosList"></div>
+      <div class="pago-form" id="pagoForm" style="display:none">
+        <div class="pago-form-title" id="pagoFormTitle">Cargar Pago 1</div>
+        <div class="pago-input-row">
+          <div class="pago-input-group">
+            <label class="pago-label">Monto ($)</label>
+            <input type="number" class="pago-input" id="pagoMonto" placeholder="0" min="1">
+          </div>
+          <div class="pago-input-group">
+            <label class="pago-label">Medio de pago</label>
+            <div class="pago-select-wrap">
+              <select class="pago-select" id="pagoMedio">
+                <option value="">Cargando...</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="pago-btn" id="pagoBtn" onclick="cargarPago()">Registrar pago</button>
+        <div class="pago-msg" id="pagoMsg"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -573,6 +648,15 @@ function openModal(id) {
     resetAssignUI();
   } else {
     assignSection.style.display = 'none';
+  }
+
+  // Sección pagos: solo para Señados
+  const pagosSection = document.getElementById('pagosSection');
+  if (estado === 'Señado') {
+    pagosSection.style.display = 'block';
+    renderPagos(extra);
+  } else {
+    pagosSection.style.display = 'none';
   }
 }
 
@@ -797,6 +881,116 @@ function cerrarSesion() {
   if (!confirm('¿Cerrar sesión?')) return;
   sessionStorage.removeItem('feriaUser');
   location.reload();
+}
+
+// ── PAGOS ────────────────────────────────────────────────────────────────────
+let MEDIOS_PAGO = [];
+let pagoNumActual = 0;
+
+async function cargarMediosPago() {
+  if (MEDIOS_PAGO.length) return;
+  try {
+    const res  = await fetch(`${API_URL}?tipo=medios`);
+    const data = await res.json();
+    if (data.ok && data.medios) MEDIOS_PAGO = data.medios;
+  } catch(e) { MEDIOS_PAGO = []; }
+}
+
+function renderPagos(extra) {
+  const pagos = [
+    { num:1, monto:extra.p1m, fecha:extra.p1f, resp:extra.p1r, medio:extra.p1med },
+    { num:2, monto:extra.p2m, fecha:extra.p2f, resp:extra.p2r, medio:extra.p2med },
+    { num:3, monto:extra.p3m, fecha:extra.p3f, resp:extra.p3r, medio:extra.p3med },
+  ];
+
+  const listEl = document.getElementById('pagosList');
+  listEl.innerHTML = pagos.map(p => {
+    const cargado = p.monto !== undefined && p.monto !== null && p.monto !== '' && Number(p.monto) > 0;
+    return `<div class="pago-item ${cargado ? 'cargado' : ''}">
+      <div class="pago-num">${p.num}</div>
+      <div class="pago-info">
+        <div class="pago-estado">${cargado ? 'Pagado' : 'Pendiente'}</div>
+        ${cargado ? `<div class="pago-detalle">${p.fecha||''} · ${p.resp||''} · ${p.medio||''}</div>` : ''}
+      </div>
+      ${cargado ? `<div class="pago-monto">$${Number(p.monto).toLocaleString('es-AR')}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const siguiente = pagos.find(p => !(p.monto !== undefined && p.monto !== null && p.monto !== '' && Number(p.monto) > 0));
+  const pagoForm  = document.getElementById('pagoForm');
+  const pagoMsg   = document.getElementById('pagoMsg');
+  pagoMsg.textContent = '';
+  pagoMsg.className   = 'pago-msg';
+
+  if (!siguiente) { pagoForm.style.display = 'none'; return; }
+
+  pagoNumActual = siguiente.num;
+  document.getElementById('pagoFormTitle').textContent = `Cargar Pago ${siguiente.num}`;
+  document.getElementById('pagoMonto').value = '';
+  pagoForm.style.display = 'flex';
+
+  cargarMediosPago().then(() => {
+    const sel = document.getElementById('pagoMedio');
+    if (MEDIOS_PAGO.length) {
+      sel.innerHTML = '<option value="">— Elegí medio —</option>' +
+        MEDIOS_PAGO.map(m => `<option value="${m}">${m}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">Sin medios cargados</option>';
+    }
+  });
+}
+
+async function cargarPago() {
+  const btn   = document.getElementById('pagoBtn');
+  const msgEl = document.getElementById('pagoMsg');
+  const monto = Number(document.getElementById('pagoMonto').value);
+  const medio = document.getElementById('pagoMedio').value.trim();
+  const extra = (FULL_DATA.extraData||{})[currentStandId] || {};
+  const debe  = Number(extra.d || 0);
+
+  msgEl.textContent = '';
+  msgEl.className   = 'pago-msg';
+
+  if (!monto || monto <= 0) { msgEl.textContent = 'Ingresá un monto válido.'; msgEl.className='pago-msg err'; return; }
+  if (monto > debe)         { msgEl.textContent = `El monto no puede superar el Debe ($${debe.toLocaleString('es-AR')}).`; msgEl.className='pago-msg err'; return; }
+  if (!medio)               { msgEl.textContent = 'Seleccioná un medio de pago.'; msgEl.className='pago-msg err'; return; }
+  if (!currentStandId)      return;
+
+  btn.disabled    = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const url  = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=${pagoNumActual}&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+
+    if (data.ok) {
+      msgEl.textContent = `✅ Pago ${pagoNumActual} registrado correctamente.`;
+      msgEl.className   = 'pago-msg ok';
+
+      if (!FULL_DATA.extraData[currentStandId]) FULL_DATA.extraData[currentStandId] = {};
+      const ex = FULL_DATA.extraData[currentStandId];
+      const k  = `p${pagoNumActual}`;
+      ex[`${k}m`]   = monto;
+      ex[`${k}f`]   = new Date().toLocaleDateString('es-AR');
+      ex[`${k}r`]   = CURRENT_USER;
+      ex[`${k}med`] = medio;
+      ex.d          = Math.max(0, (Number(ex.d)||0) - monto);
+
+      document.getElementById('modalDebe').textContent = `$${ex.d.toLocaleString('es-AR')}`;
+      document.getElementById('modalDebeBox').className = 'money-box ' + (ex.d > 0 ? 'debe-mal' : 'debe-ok');
+
+      setTimeout(() => { renderPagos(ex); }, 1200);
+    } else {
+      msgEl.textContent = data.error || 'Error al guardar el pago.';
+      msgEl.className   = 'pago-msg err';
+    }
+  } catch(err) {
+    msgEl.textContent = 'Error de conexión.';
+    msgEl.className   = 'pago-msg err';
+  }
+  btn.disabled    = false;
+  btn.textContent = 'Registrar pago';
 }
 
 initLogin();
