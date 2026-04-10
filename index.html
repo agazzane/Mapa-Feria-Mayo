@@ -138,6 +138,35 @@
     font-family:var(--font);
   }
   .login-user-pill:hover { background:rgba(255,255,255,.25); }
+
+  /* ── ASIGNAR FERIANTE ── */
+  .assign-section {
+    margin-top:18px; padding:14px 16px; background:#f5f3ff;
+    border:1.5px solid #9333ea; border-radius:12px;
+  }
+  .assign-section .assign-title {
+    font-size:12px; font-weight:700; color:#6b21a8;
+    text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;
+  }
+  .assign-select-wrap { position:relative; margin-bottom:10px; }
+  .assign-select-wrap::after { content:'▾'; position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#9333ea; pointer-events:none; font-size:15px; }
+  .assign-select {
+    width:100%; padding:10px 32px 10px 12px; border:2px solid #d8b4fe;
+    border-radius:8px; font-size:14px; font-family:var(--font); color:#1e293b;
+    background:white; appearance:none; -webkit-appearance:none; outline:none;
+    transition:border-color .2s;
+  }
+  .assign-select:focus { border-color:#9333ea; }
+  .assign-btn {
+    width:100%; padding:10px; background:#7c3aed; color:white;
+    border:none; border-radius:8px; font-size:14px; font-weight:700;
+    font-family:var(--font); cursor:pointer; transition:background .2s;
+  }
+  .assign-btn:active { background:#6d28d9; }
+  .assign-btn:disabled { background:#c4b5fd; cursor:not-allowed; }
+  .assign-msg { font-size:13px; font-weight:600; text-align:center; margin-top:8px; min-height:16px; }
+  .assign-msg.ok  { color:#15803d; }
+  .assign-msg.err { color:#b91c1c; }
 </style>
 </head>
 <body>
@@ -316,6 +345,18 @@
         <div class="amount" id="modalDebe"></div>
       </div>
     </div>
+
+    <!-- ASIGNAR FERIANTE (solo cuando el stand está Disponible) -->
+    <div class="assign-section" id="assignSection" style="display:none">
+      <div class="assign-title">🔓 Asignar Feriante</div>
+      <div class="assign-select-wrap">
+        <select class="assign-select" id="assignSelect">
+          <option value="">— Seleccioná un feriante —</option>
+        </select>
+      </div>
+      <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()">Asignar</button>
+      <div class="assign-msg" id="assignMsg"></div>
+    </div>
   </div>
 </div>
 
@@ -328,11 +369,23 @@ document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTa
 const API_URL = "https://script.google.com/macros/s/AKfycbw1KPZO2gNyjKoj8GDdoG6QafGNt4EHbzugcqf66eNAt9hyLmw671EBtLZpRtmVX3VHNw/exec";
 
 let FULL_DATA = {}, currentFloor = 'pb', currentFilter = 'todos';
+let FERIANTES_LIST = [];
+let currentStandId = null;
 
 async function load() {
   try {
-    const res = await fetch(API_URL);
-    FULL_DATA = await res.json();
+    const [resMap, resFeriantes] = await Promise.all([
+      fetch(API_URL),
+      fetch(API_URL + '?tipo=feriantes')
+    ]);
+    FULL_DATA = await resMap.json();
+    const ferData = await resFeriantes.json();
+    if (ferData.ok && ferData.feriantes) {
+      FERIANTES_LIST = ferData.feriantes;
+      const sel = document.getElementById('assignSelect');
+      sel.innerHTML = '<option value="">— Seleccioná un feriante —</option>' +
+        FERIANTES_LIST.map(f => `<option value="${f}">${f}</option>`).join('');
+    }
     buildGrid('grid-pb', FULL_DATA.pbData);
     buildGrid('grid-pa', FULL_DATA.paData);
     buildStats();
@@ -421,6 +474,7 @@ function applyFilters() {
 }
 
 function openModal(id) {
+  currentStandId = id;
   const data  = (FULL_DATA.pbData||{})[id] || (FULL_DATA.paData||{})[id] || {};
   const extra = (FULL_DATA.extraData||{})[id] || {};
   const estado = data.e || 'Disponible';
@@ -464,6 +518,64 @@ function openModal(id) {
   }
 
   document.getElementById('modalOverlay').classList.add('open');
+
+  // Sección asignar feriante: solo para Disponibles
+  const assignSection = document.getElementById('assignSection');
+  if (estado === 'Disponible') {
+    assignSection.style.display = 'block';
+    document.getElementById('assignSelect').value = '';
+    document.getElementById('assignMsg').textContent = '';
+    document.getElementById('assignMsg').className = 'assign-msg';
+    document.getElementById('assignBtn').disabled = false;
+  } else {
+    assignSection.style.display = 'none';
+  }
+}
+
+async function asignarFeriante() {
+  const feriante = document.getElementById('assignSelect').value.trim();
+  const msgEl    = document.getElementById('assignMsg');
+  const btn      = document.getElementById('assignBtn');
+
+  msgEl.textContent = '';
+  msgEl.className = 'assign-msg';
+
+  if (!feriante) {
+    msgEl.textContent = 'Seleccioná un feriante primero.';
+    msgEl.className = 'assign-msg err';
+    return;
+  }
+  if (!currentStandId) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const url = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}`;
+    const res  = await fetch(url);
+    const data = await res.json();
+    if (data.ok) {
+      msgEl.textContent = `✅ ${feriante} asignado correctamente.`;
+      msgEl.className = 'assign-msg ok';
+      // Actualizar datos locales
+      if (!FULL_DATA.extraData) FULL_DATA.extraData = {};
+      if (!FULL_DATA.extraData[currentStandId]) FULL_DATA.extraData[currentStandId] = {};
+      FULL_DATA.extraData[currentStandId].n = feriante;
+      // Ocultar sección de asignación tras el éxito
+      setTimeout(() => {
+        document.getElementById('assignSection').style.display = 'none';
+      }, 1800);
+    } else {
+      msgEl.textContent = data.error || 'Error al guardar.';
+      msgEl.className = 'assign-msg err';
+    }
+  } catch(err) {
+    msgEl.textContent = 'Error de conexión.';
+    msgEl.className = 'assign-msg err';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Asignar';
 }
 
 function closeModal(e) {
