@@ -275,6 +275,45 @@
     .modal { border-radius:18px; max-height:90vh; overflow-y:auto; padding-bottom:28px; }
   }
 
+  /* ── ALTA FERIANTE ── */
+  .alta-panel { display:none; }
+  .alta-panel.active { display:block; }
+  .alta-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .alta-back { background:#f5f3ff; border:none; border-radius:8px; padding:6px 12px;
+    font-size:13px; font-weight:700; font-family:var(--font); color:#6b21a8; cursor:pointer; }
+  .alta-back:active { background:#ede9fe; }
+  .alta-title { font-size:15px; font-weight:700; color:#6b21a8; }
+  .alta-form { display:flex; flex-direction:column; gap:10px; }
+  .alta-field { display:flex; flex-direction:column; gap:4px; }
+  .alta-label { font-size:11px; font-weight:700; color:#6b21a8; text-transform:uppercase; letter-spacing:.4px; }
+  .alta-label span.req { color:#b91c1c; margin-left:2px; }
+  .alta-label span.opt { color:#94a3b8; font-weight:500; text-transform:none; letter-spacing:0; font-size:11px; }
+  .alta-input, .alta-select {
+    width:100%; padding:10px 12px; border:2px solid #d8b4fe; border-radius:8px;
+    font-size:14px; font-family:var(--font); color:#1e293b; outline:none;
+    background:white; transition:border-color .2s; appearance:none; -webkit-appearance:none;
+  }
+  .alta-input:focus, .alta-select:focus { border-color:#9333ea; }
+  .alta-select-wrap { position:relative; }
+  .alta-select-wrap::after { content:'▾'; position:absolute; right:10px; top:50%; transform:translateY(-50%); color:#9333ea; pointer-events:none; }
+  .alta-hint { font-size:11px; color:#9333ea; margin-top:2px; }
+  .alta-hint.err-hint { color:#b91c1c; }
+  .alta-btn { width:100%; padding:11px; background:#7c3aed; color:white;
+    border:none; border-radius:8px; font-size:14px; font-weight:700;
+    font-family:var(--font); cursor:pointer; transition:background .2s; margin-top:4px; }
+  .alta-btn:active { background:#6d28d9; }
+  .alta-btn:disabled { background:#c4b5fd; cursor:not-allowed; }
+  .alta-msg { font-size:13px; font-weight:600; text-align:center; margin-top:6px; min-height:16px; }
+  .alta-msg.ok  { color:#15803d; }
+  .alta-msg.err { color:#b91c1c; }
+  /* Botón "Dar de alta" dentro del assign-section */
+  .assign-alta-btn {
+    width:100%; margin-top:8px; padding:8px; background:white;
+    color:#7c3aed; border:1.5px dashed #9333ea; border-radius:8px;
+    font-size:13px; font-weight:700; font-family:var(--font); cursor:pointer; transition:all .15s;
+  }
+  .assign-alta-btn:active { background:#f5f3ff; }
+
   /* ── PAGOS ── */
   .pagos-section { margin-top:16px; padding:14px 16px; background:#fffbeb; border:1.5px solid #f59e0b; border-radius:12px; }
   .pagos-title { font-size:12px; font-weight:700; color:#92400e; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
@@ -502,6 +541,9 @@
         <button class="assign-search-clear" id="assignSearchClear" onclick="clearAssignSearch()">×</button>
         <div class="assign-dropdown" id="assignDropdown"></div>
       </div>
+      <!-- Botón dar de alta nuevo feriante -->
+      <button class="assign-alta-btn" onclick="openAltaPanel()">➕ No lo encuentro — Dar de alta nuevo feriante</button>
+
       <!-- Botón mobiliario y resumen -->
       <button class="mob-open-btn" onclick="openMobPanel()">🪑 Agregar mobiliario <span id="mobBtnLabel"></span></button>
       <div class="mob-summary" id="mobSummary">
@@ -571,6 +613,54 @@
       </div>
       <div class="mob-list" id="mobList"></div>
       <button class="assign-btn" style="margin-top:14px;background:#0369a1;border:none" onclick="closeMobPanel()">Confirmar selección</button>
+    </div>
+
+    <!-- Panel de alta de nuevo feriante -->
+    <div class="alta-panel" id="altaPanel">
+      <div class="alta-header">
+        <button class="alta-back" onclick="closeAltaPanel()">← Volver</button>
+        <div class="alta-title">➕ Nuevo Feriante</div>
+      </div>
+      <div class="alta-form">
+        <div class="alta-field">
+          <label class="alta-label">Nombre y Apellido <span class="req">*</span></label>
+          <input type="text" class="alta-input" id="altaNombre" placeholder="Ej: María González" autocomplete="off">
+        </div>
+        <div class="alta-field">
+          <label class="alta-label">Tipo <span class="req">*</span></label>
+          <div class="alta-select-wrap">
+            <select class="alta-select" id="altaTipo">
+              <option value="">— Seleccioná —</option>
+              <option value="Emprend">Emprend</option>
+              <option value="Moda circ">Moda circ</option>
+            </select>
+          </div>
+        </div>
+        <div class="alta-field">
+          <label class="alta-label">Rubro <span class="req">*</span></label>
+          <input type="text" class="alta-input" id="altaRubro" placeholder="Ej: Ropa infantil" maxlength="60" autocomplete="off">
+          <div class="alta-hint" id="altaRubroHint">Máximo 60 caracteres</div>
+        </div>
+        <div class="alta-field">
+          <label class="alta-label">Celular <span class="req">*</span></label>
+          <input type="tel" class="alta-input" id="altaCelular" placeholder="1158585858" autocomplete="off" inputmode="numeric">
+          <div class="alta-hint">Sin 0, sin 15, sin espacios. Ej: 1158585858</div>
+        </div>
+        <div class="alta-field">
+          <label class="alta-label">Email <span class="opt">(opcional)</span></label>
+          <input type="email" class="alta-input" id="altaEmail" placeholder="mail@ejemplo.com" autocomplete="off" inputmode="email">
+        </div>
+        <div class="alta-field">
+          <label class="alta-label">Instagram <span class="opt">(opcional)</span></label>
+          <input type="text" class="alta-input" id="altaIG" placeholder="@usuario" autocomplete="off">
+        </div>
+        <div class="alta-field">
+          <label class="alta-label">DNI <span class="opt">(opcional)</span></label>
+          <input type="text" class="alta-input" id="altaDNI" placeholder="Ej: 30123456" autocomplete="off" inputmode="numeric">
+        </div>
+        <button class="alta-btn" id="altaBtn" onclick="guardarNuevoFeriante()">Guardar feriante</button>
+        <div class="alta-msg" id="altaMsg"></div>
+      </div>
     </div>
 
   </div>
@@ -1195,6 +1285,110 @@ async function cargarPago() {
   btn.textContent = 'Registrar pago';
 }
 
+// ── ALTA FERIANTE ─────────────────────────────────────────────────────────────
+function openAltaPanel() {
+  // Limpiar formulario
+  ['altaNombre','altaRubro','altaCelular','altaEmail','altaIG','altaDNI'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('altaTipo').value = '';
+  document.getElementById('altaMsg').textContent = '';
+  document.getElementById('altaMsg').className = 'alta-msg';
+  document.getElementById('altaRubroHint').textContent = 'Máximo 60 caracteres';
+  document.getElementById('altaRubroHint').className = 'alta-hint';
+  document.getElementById('altaBtn').disabled = false;
+  // Mostrar panel
+  document.getElementById('mainPanel').classList.add('hidden');
+  document.getElementById('mobPanel').classList.remove('active');
+  document.getElementById('altaPanel').classList.add('active');
+}
+
+function closeAltaPanel() {
+  document.getElementById('altaPanel').classList.remove('active');
+  document.getElementById('mainPanel').classList.remove('hidden');
+}
+
+// Contador de caracteres en Rubro
+document.addEventListener('DOMContentLoaded', () => {
+  const rubroInput = document.getElementById('altaRubro');
+  if (rubroInput) {
+    rubroInput.addEventListener('input', () => {
+      const len = rubroInput.value.length;
+      const hint = document.getElementById('altaRubroHint');
+      hint.textContent = `${len}/60 caracteres`;
+      hint.className = len > 60 ? 'alta-hint err-hint' : 'alta-hint';
+    });
+  }
+});
+
+async function guardarNuevoFeriante() {
+  const msgEl  = document.getElementById('altaMsg');
+  const btn    = document.getElementById('altaBtn');
+  msgEl.textContent = '';
+  msgEl.className   = 'alta-msg';
+
+  const nombre  = document.getElementById('altaNombre').value.trim();
+  const tipo    = document.getElementById('altaTipo').value.trim();
+  const rubro   = document.getElementById('altaRubro').value.trim();
+  const celular = document.getElementById('altaCelular').value.trim();
+  const email   = document.getElementById('altaEmail').value.trim();
+  const ig      = document.getElementById('altaIG').value.trim();
+  const dni     = document.getElementById('altaDNI').value.trim();
+
+  // Validaciones
+  if (!nombre) { msgEl.textContent = 'El Nombre y Apellido es obligatorio.'; msgEl.className = 'alta-msg err'; return; }
+  if (!tipo)   { msgEl.textContent = 'Seleccioná el Tipo.'; msgEl.className = 'alta-msg err'; return; }
+  if (!rubro)  { msgEl.textContent = 'El Rubro es obligatorio.'; msgEl.className = 'alta-msg err'; return; }
+  if (rubro.length > 60) { msgEl.textContent = 'El Rubro no puede superar 60 caracteres.'; msgEl.className = 'alta-msg err'; return; }
+  if (!celular) { msgEl.textContent = 'El Celular es obligatorio.'; msgEl.className = 'alta-msg err'; return; }
+  if (!/^\d{8,12}$/.test(celular)) { msgEl.textContent = 'El celular debe tener solo números (Ej: 1158585858).'; msgEl.className = 'alta-msg err'; return; }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msgEl.textContent = 'El Email no tiene un formato válido.'; msgEl.className = 'alta-msg err'; return; }
+
+  btn.disabled    = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const params = new URLSearchParams({
+      tipo:    'altaferiante',
+      nombre,
+      tipof:   tipo,
+      rubro,
+      celular,
+      email,
+      ig,
+      dni,
+      user:    CURRENT_USER
+    });
+    const res  = await fetch(`${API_URL}?${params.toString()}`);
+    const data = await res.json();
+
+    if (data.ok) {
+      // Agregar a la lista local y reordenar
+      if (!FERIANTES_LIST.includes(nombre)) {
+        FERIANTES_LIST.push(nombre);
+        FERIANTES_LIST.sort((a, b) => a.localeCompare(b, 'es'));
+      }
+      msgEl.textContent = `✅ ${nombre} dado de alta correctamente.`;
+      msgEl.className   = 'alta-msg ok';
+      // Volver al panel principal y preseleccionar al nuevo feriante
+      setTimeout(() => {
+        closeAltaPanel();
+        selectFeriante(nombre);
+      }, 1200);
+    } else {
+      msgEl.textContent = data.error || 'Error al dar de alta el feriante.';
+      msgEl.className   = 'alta-msg err';
+      btn.disabled    = false;
+      btn.textContent = 'Guardar feriante';
+    }
+  } catch(err) {
+    msgEl.textContent = 'Error de conexión.';
+    msgEl.className   = 'alta-msg err';
+    btn.disabled    = false;
+    btn.textContent = 'Guardar feriante';
+  }
+}
+
 // ── MOBILIARIO ──────────────────────────────────────────────────────────────
 const MOB_ITEMS = [
   { key:'mob_mesa',  label:'Mesa' },
@@ -1227,6 +1421,7 @@ function openMobPanel() {
       </div>
     </div>`).join('');
   document.getElementById('mainPanel').classList.add('hidden');
+  document.getElementById('altaPanel').classList.remove('active');
   document.getElementById('mobPanel').classList.add('active');
 }
 
