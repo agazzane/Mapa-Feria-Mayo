@@ -206,6 +206,21 @@
   .assign-msg.ok  { color:#15803d; }
   .assign-msg.err { color:#b91c1c; }
 
+  /* ── PAGO INICIAL dentro del assign-section ── */
+  .assign-pago-sep { height:1px; background:#d8b4fe; margin:14px 0 12px; }
+  .assign-pago-title { font-size:12px; font-weight:700; color:#6b21a8; text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px; }
+  .assign-pago-row { display:flex; gap:8px; margin-bottom:10px; }
+  .assign-pago-group { flex:1; display:flex; flex-direction:column; gap:4px; }
+  .assign-pago-label { font-size:11px; font-weight:600; color:#6b21a8; text-transform:uppercase; letter-spacing:.4px; }
+  .assign-pago-input, .assign-pago-select {
+    width:100%; padding:9px 12px; border:2px solid #d8b4fe; border-radius:8px;
+    font-size:14px; font-family:var(--font); color:#1e293b; outline:none;
+    background:white; transition:border-color .2s; appearance:none; -webkit-appearance:none;
+  }
+  .assign-pago-input:focus, .assign-pago-select:focus { border-color:#9333ea; }
+  .assign-pago-select-wrap { position:relative; }
+  .assign-pago-select-wrap::after { content:'▾'; position:absolute; right:10px; top:50%; transform:translateY(-50%); color:#9333ea; pointer-events:none; }
+
   /* ── MODAL: desktop fix ── */
   @media (min-width: 640px) {
     .modal-overlay { align-items:center; }
@@ -436,7 +451,25 @@
         <button class="assign-search-clear" id="assignSearchClear" onclick="clearAssignSearch()">×</button>
         <div class="assign-dropdown" id="assignDropdown"></div>
       </div>
-      <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()" disabled>Asignar</button>
+      <!-- Seña inicial (obligatoria) -->
+      <div class="assign-pago-sep"></div>
+      <div class="assign-pago-title">💳 Seña inicial (obligatoria)</div>
+      <div class="assign-pago-row">
+        <div class="assign-pago-group">
+          <label class="assign-pago-label">Monto ($)</label>
+          <input type="number" class="assign-pago-input" id="assignMonto"
+            placeholder="0" min="1" oninput="checkAssignBtn()">
+        </div>
+        <div class="assign-pago-group">
+          <label class="assign-pago-label">Medio de pago</label>
+          <div class="assign-pago-select-wrap">
+            <select class="assign-pago-select" id="assignMedio" onchange="checkAssignBtn()">
+              <option value="">Cargando...</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()" disabled>Asignar y señar</button>
       <div class="assign-msg" id="assignMsg"></div>
     </div>
 
@@ -659,6 +692,39 @@ function resetAssignUI() {
   document.getElementById('assignMsg').className = 'assign-msg';
   document.getElementById('assignBtn').disabled = true;
   document.getElementById('assignSearchWrap').style.display = 'block';
+  document.getElementById('assignMonto').value = '';
+  // Cargar medios de pago en el selector de seña inicial
+  cargarMediosPago().then(() => {
+    const sel = document.getElementById('assignMedio');
+    if (MEDIOS_PAGO.length) {
+      sel.innerHTML = '<option value="">— Elegí medio —</option>' +
+        MEDIOS_PAGO.map(m => `<option value="${m}">${m}</option>`).join('');
+    } else {
+      sel.innerHTML = '<option value="">Sin medios cargados</option>';
+    }
+  });
+}
+
+function checkAssignBtn() {
+  const feriante = selectedFeriante;
+  const monto    = Number(document.getElementById('assignMonto').value);
+  const medio    = document.getElementById('assignMedio').value.trim();
+  const data     = (FULL_DATA.pbData||{})[currentStandId] || (FULL_DATA.paData||{})[currentStandId] || {};
+  const extra    = (FULL_DATA.extraData||{})[currentStandId] || {};
+  const precio   = Number(extra.pr || data.pr || 0);
+  const btn      = document.getElementById('assignBtn');
+  const msgEl    = document.getElementById('assignMsg');
+
+  // Validar monto vs precio
+  if (monto > 0 && precio > 0 && monto > precio) {
+    msgEl.textContent = `El monto no puede superar el precio del stand ($${precio.toLocaleString('es-AR')}).`;
+    msgEl.className   = 'assign-msg err';
+    btn.disabled = true;
+    return;
+  }
+  msgEl.textContent = '';
+  msgEl.className   = 'assign-msg';
+  btn.disabled = !(feriante && monto > 0 && medio);
 }
 
 function filterFeriantes() {
@@ -694,9 +760,9 @@ function selectFeriante(nombre) {
   document.getElementById('assignPill').classList.add('visible');
   document.getElementById('assignSearchWrap').style.display = 'none';
   document.getElementById('assignDropdown').classList.remove('open');
-  document.getElementById('assignBtn').disabled = false;
   document.getElementById('assignMsg').textContent = '';
   document.getElementById('assignMsg').className = 'assign-msg';
+  checkAssignBtn();
 }
 
 function clearAssignSelection() {
@@ -705,8 +771,8 @@ function clearAssignSelection() {
   document.getElementById('assignSearchWrap').style.display = 'block';
   document.getElementById('assignSearch').value = '';
   document.getElementById('assignSearchClear').style.display = 'none';
-  document.getElementById('assignBtn').disabled = true;
   document.getElementById('assignSearch').focus();
+  checkAssignBtn();
 }
 
 function clearAssignSearch() {
@@ -728,12 +794,21 @@ async function asignarFeriante() {
   const feriante = selectedFeriante;
   const msgEl    = document.getElementById('assignMsg');
   const btn      = document.getElementById('assignBtn');
+  const monto    = Number(document.getElementById('assignMonto').value);
+  const medio    = document.getElementById('assignMedio').value.trim();
 
   msgEl.textContent = '';
   msgEl.className = 'assign-msg';
 
-  if (!feriante) {
-    msgEl.textContent = 'Seleccioná un feriante primero.';
+  if (!feriante) { msgEl.textContent = 'Seleccioná un feriante primero.'; msgEl.className = 'assign-msg err'; return; }
+  if (!monto || monto <= 0) { msgEl.textContent = 'Ingresá un monto válido.'; msgEl.className = 'assign-msg err'; return; }
+  if (!medio) { msgEl.textContent = 'Seleccioná un medio de pago.'; msgEl.className = 'assign-msg err'; return; }
+
+  // Validar monto vs precio del stand
+  const extra  = (FULL_DATA.extraData||{})[currentStandId] || {};
+  const precio = Number(extra.pr || 0);
+  if (precio > 0 && monto > precio) {
+    msgEl.textContent = `El monto no puede superar el precio del stand ($${precio.toLocaleString('es-AR')}).`;
     msgEl.className = 'assign-msg err';
     return;
   }
@@ -743,52 +818,45 @@ async function asignarFeriante() {
   btn.textContent = 'Guardando...';
 
   try {
-    const url = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(CURRENT_USER)}`;
-    const res  = await fetch(url);
-    const data = await res.json();
-    if (data.ok) {
-      msgEl.textContent = `✅ ${feriante} asignado correctamente.`;
-      msgEl.className = 'assign-msg ok';
-        // 🔥 RECARGAR TODO DESDE EL BACKEND
-      await load();
-       // cerrar modal después de recargar
-      setTimeout(() => {
-    document.getElementById('modalOverlay').classList.remove('open');
-     }, 1200);
-      if (!FULL_DATA.extraData) FULL_DATA.extraData = {};
-      if (!FULL_DATA.extraData[currentStandId]) FULL_DATA.extraData[currentStandId] = {};
-      FULL_DATA.extraData[currentStandId].n = feriante;
-      // Actualizar estado en pbData/paData a Señado
-      if (FULL_DATA.pbData && FULL_DATA.pbData[currentStandId]) FULL_DATA.pbData[currentStandId].e = 'Señado';
-      if (FULL_DATA.paData && FULL_DATA.paData[currentStandId]) FULL_DATA.paData[currentStandId].e = 'Señado';
-      // Actualizar el stand en el DOM
-      const standEl = document.querySelector(`.stand[data-num="${currentStandId}"]`);
-      if (standEl) {
-        standEl.setAttribute('data-e', 'Señado');
-        standEl.setAttribute('data-n', feriante);
-        // Actualizar texto del stand
-        const rubEl = standEl.querySelector('.srub');
-        if (rubEl) rubEl.textContent = feriante.length > 22 ? feriante.slice(0,20)+'…' : feriante;
-      }
-      // Actualizar el modal
-      document.getElementById('modalNombre').textContent = feriante;
-      const badge = document.getElementById('modalBadge');
-      badge.setAttribute('data-e', 'Señado');
-      badge.textContent = '⭐ Señado';
-      setTimeout(() => {
-        document.getElementById('assignSection').style.display = 'none';
-      }, 1800);
-    } else {
-      msgEl.textContent = data.error || 'Error al guardar.';
+    // Paso 1: asignar feriante
+    const urlAsignar = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const resAsignar = await fetch(urlAsignar);
+    const dataAsignar = await resAsignar.json();
+    if (!dataAsignar.ok) {
+      msgEl.textContent = dataAsignar.error || 'Error al asignar el feriante.';
       msgEl.className = 'assign-msg err';
+      btn.disabled = false;
+      btn.textContent = 'Asignar y señar';
+      return;
     }
+
+    // Paso 2: registrar pago 1
+    const urlPago = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=1&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const resPago = await fetch(urlPago);
+    const dataPago = await resPago.json();
+    if (!dataPago.ok) {
+      msgEl.textContent = `Feriante asignado pero error al registrar la seña: ${dataPago.error || ''}`;
+      msgEl.className = 'assign-msg err';
+      btn.disabled = false;
+      btn.textContent = 'Asignar y señar';
+      return;
+    }
+
+    // Todo OK: mostrar mensaje y recargar el mapa
+    msgEl.textContent = `✅ ${feriante} asignado y seña de $${monto.toLocaleString('es-AR')} registrada.`;
+    msgEl.className = 'assign-msg ok';
+    setTimeout(async () => {
+      document.getElementById('modalOverlay').classList.remove('open');
+      await load();
+    }, 1800);
+
   } catch(err) {
     msgEl.textContent = 'Error de conexión.';
     msgEl.className = 'assign-msg err';
   }
 
   btn.disabled = false;
-  btn.textContent = 'Asignar';
+  btn.textContent = 'Asignar y señar';
 }
 
 function closeModal(e) {
