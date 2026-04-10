@@ -749,6 +749,12 @@ async function asignarFeriante() {
     if (data.ok) {
       msgEl.textContent = `✅ ${feriante} asignado correctamente.`;
       msgEl.className = 'assign-msg ok';
+        // 🔥 RECARGAR TODO DESDE EL BACKEND
+      await load();
+       // cerrar modal después de recargar
+      setTimeout(() => {
+    document.getElementById('modalOverlay').classList.remove('open');
+     }, 1200);
       if (!FULL_DATA.extraData) FULL_DATA.extraData = {};
       if (!FULL_DATA.extraData[currentStandId]) FULL_DATA.extraData[currentStandId] = {};
       FULL_DATA.extraData[currentStandId].n = feriante;
