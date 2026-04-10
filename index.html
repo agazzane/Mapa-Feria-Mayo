@@ -674,7 +674,7 @@ async function asignarFeriante() {
   btn.textContent = 'Guardando...';
 
   try {
-    const url = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}`;
+    const url = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(CURRENT_USER)}`;
     const res  = await fetch(url);
     const data = await res.json();
     if (data.ok) {
