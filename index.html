@@ -770,7 +770,7 @@ async function doLogin() {
   btn.disabled = true;
   btn.textContent = 'Verificando...';
   try {
-    const res  = await fetch(`${API_URL}?tipo=login&user=${encodeURIComponent(user)}&pass=${encodeURIComponent(pass)}`);
+    const res  = await fetch(`${API_URL}?tipo=login&user=${encodeURIComponent(CURRENT_USER)}&pass=${encodeURIComponent(pass)}`);
     const data = await res.json();
     if (data.ok) {
       sessionStorage.setItem('feriaUser', data.user);
