@@ -148,15 +148,53 @@
     font-size:12px; font-weight:700; color:#6b21a8;
     text-transform:uppercase; letter-spacing:.5px; margin-bottom:10px;
   }
-  .assign-select-wrap { position:relative; margin-bottom:10px; }
-  .assign-select-wrap::after { content:'▾'; position:absolute; right:12px; top:50%; transform:translateY(-50%); color:#9333ea; pointer-events:none; font-size:15px; }
-  .assign-select {
-    width:100%; padding:10px 32px 10px 12px; border:2px solid #d8b4fe;
+  .assign-search-wrap { position:relative; margin-bottom:10px; }
+  .assign-search-input {
+    width:100%; padding:10px 36px 10px 12px; border:2px solid #d8b4fe;
     border-radius:8px; font-size:14px; font-family:var(--font); color:#1e293b;
-    background:white; appearance:none; -webkit-appearance:none; outline:none;
-    transition:border-color .2s;
+    background:white; outline:none; transition:border-color .2s;
   }
-  .assign-select:focus { border-color:#9333ea; }
+  .assign-search-input:focus { border-color:#9333ea; }
+  .assign-search-clear {
+    position:absolute; right:10px; top:50%; transform:translateY(-50%);
+    background:none; border:none; font-size:18px; color:#9333ea;
+    cursor:pointer; padding:0; line-height:1; display:none;
+  }
+  .assign-dropdown {
+    position:absolute; top:calc(100% + 4px); left:0; right:0;
+    background:white; border:2px solid #d8b4fe; border-radius:8px;
+    max-height:200px; overflow-y:auto; z-index:300;
+    box-shadow:0 4px 16px rgba(0,0,0,.12);
+    scrollbar-width:thin; scrollbar-color:#d8b4fe transparent;
+    display:none;
+  }
+  .assign-dropdown.open { display:block; }
+  .assign-dropdown-item {
+    padding:11px 14px; font-size:14px; font-family:var(--font);
+    color:#1e293b; cursor:pointer; border-bottom:1px solid #f3f0ff;
+    transition:background .1s;
+  }
+  .assign-dropdown-item:last-child { border-bottom:none; }
+  .assign-dropdown-item:active,
+  .assign-dropdown-item.focused { background:#f5f3ff; color:#6b21a8; }
+  .assign-dropdown-item mark {
+    background:#ede9fe; color:#6b21a8; border-radius:2px;
+    font-weight:700; padding:0 1px;
+  }
+  .assign-dropdown-empty {
+    padding:12px 14px; font-size:13px; color:#94a3b8; text-align:center;
+  }
+  .assign-selected-pill {
+    display:none; align-items:center; gap:8px; margin-bottom:10px;
+    padding:8px 12px; background:#ede9fe; border-radius:8px;
+    border:1.5px solid #c4b5fd;
+  }
+  .assign-selected-pill.visible { display:flex; }
+  .assign-selected-pill span { font-size:14px; font-weight:600; color:#6b21a8; flex:1; }
+  .assign-selected-pill button {
+    background:none; border:none; font-size:18px; color:#9333ea;
+    cursor:pointer; padding:0; line-height:1;
+  }
   .assign-btn {
     width:100%; padding:10px; background:#7c3aed; color:white;
     border:none; border-radius:8px; font-size:14px; font-weight:700;
@@ -349,12 +387,21 @@
     <!-- ASIGNAR FERIANTE (solo cuando el stand está Disponible) -->
     <div class="assign-section" id="assignSection" style="display:none">
       <div class="assign-title">🔓 Asignar Feriante</div>
-      <div class="assign-select-wrap">
-        <select class="assign-select" id="assignSelect">
-          <option value="">— Seleccioná un feriante —</option>
-        </select>
+      <!-- Pill del feriante seleccionado -->
+      <div class="assign-selected-pill" id="assignPill">
+        <span id="assignPillName"></span>
+        <button onclick="clearAssignSelection()" title="Quitar selección">×</button>
       </div>
-      <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()">Asignar</button>
+      <!-- Campo de búsqueda -->
+      <div class="assign-search-wrap" id="assignSearchWrap">
+        <input type="text" class="assign-search-input" id="assignSearch"
+          placeholder="Buscar feriante por nombre..."
+          autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="filterFeriantes()" onfocus="filterFeriantes()">
+        <button class="assign-search-clear" id="assignSearchClear" onclick="clearAssignSearch()">×</button>
+        <div class="assign-dropdown" id="assignDropdown"></div>
+      </div>
+      <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()" disabled>Asignar</button>
       <div class="assign-msg" id="assignMsg"></div>
     </div>
   </div>
@@ -523,17 +570,93 @@ function openModal(id) {
   const assignSection = document.getElementById('assignSection');
   if (estado === 'Disponible') {
     assignSection.style.display = 'block';
-    document.getElementById('assignSelect').value = '';
-    document.getElementById('assignMsg').textContent = '';
-    document.getElementById('assignMsg').className = 'assign-msg';
-    document.getElementById('assignBtn').disabled = false;
+    resetAssignUI();
   } else {
     assignSection.style.display = 'none';
   }
 }
 
+// ── ASIGNAR FERIANTE – lógica de búsqueda ──────────────────────────────────
+let selectedFeriante = null;
+
+function resetAssignUI() {
+  selectedFeriante = null;
+  document.getElementById('assignSearch').value = '';
+  document.getElementById('assignSearchClear').style.display = 'none';
+  document.getElementById('assignDropdown').classList.remove('open');
+  document.getElementById('assignPill').classList.remove('visible');
+  document.getElementById('assignPillName').textContent = '';
+  document.getElementById('assignMsg').textContent = '';
+  document.getElementById('assignMsg').className = 'assign-msg';
+  document.getElementById('assignBtn').disabled = true;
+  document.getElementById('assignSearchWrap').style.display = 'block';
+}
+
+function filterFeriantes() {
+  const q   = document.getElementById('assignSearch').value.trim().toLowerCase();
+  const dd  = document.getElementById('assignDropdown');
+  const clr = document.getElementById('assignSearchClear');
+
+  clr.style.display = q ? 'block' : 'none';
+
+  const matches = q
+    ? FERIANTES_LIST.filter(f => f.toLowerCase().includes(q))
+    : FERIANTES_LIST.slice(0, 40);  // sin texto muestra los primeros 40
+
+  if (!matches.length) {
+    dd.innerHTML = `<div class="assign-dropdown-empty">Sin resultados para "${q}"</div>`;
+  } else {
+    dd.innerHTML = matches.map(f => {
+      const label = q
+        ? f.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'),
+            '<mark>$1</mark>')
+        : f;
+      return `<div class="assign-dropdown-item" ontouchstart="" onclick="selectFeriante('${f.replace(/'/g,"\\'")}')">
+        ${label}
+      </div>`;
+    }).join('');
+  }
+  dd.classList.add('open');
+}
+
+function selectFeriante(nombre) {
+  selectedFeriante = nombre;
+  document.getElementById('assignPillName').textContent = nombre;
+  document.getElementById('assignPill').classList.add('visible');
+  document.getElementById('assignSearchWrap').style.display = 'none';
+  document.getElementById('assignDropdown').classList.remove('open');
+  document.getElementById('assignBtn').disabled = false;
+  document.getElementById('assignMsg').textContent = '';
+  document.getElementById('assignMsg').className = 'assign-msg';
+}
+
+function clearAssignSelection() {
+  selectedFeriante = null;
+  document.getElementById('assignPill').classList.remove('visible');
+  document.getElementById('assignSearchWrap').style.display = 'block';
+  document.getElementById('assignSearch').value = '';
+  document.getElementById('assignSearchClear').style.display = 'none';
+  document.getElementById('assignBtn').disabled = true;
+  document.getElementById('assignSearch').focus();
+}
+
+function clearAssignSearch() {
+  document.getElementById('assignSearch').value = '';
+  document.getElementById('assignSearchClear').style.display = 'none';
+  document.getElementById('assignDropdown').classList.remove('open');
+  document.getElementById('assignSearch').focus();
+}
+
+// Cerrar dropdown al tocar fuera
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('assignSearchWrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('assignDropdown').classList.remove('open');
+  }
+});
+
 async function asignarFeriante() {
-  const feriante = document.getElementById('assignSelect').value.trim();
+  const feriante = selectedFeriante;
   const msgEl    = document.getElementById('assignMsg');
   const btn      = document.getElementById('assignBtn');
 
@@ -557,11 +680,9 @@ async function asignarFeriante() {
     if (data.ok) {
       msgEl.textContent = `✅ ${feriante} asignado correctamente.`;
       msgEl.className = 'assign-msg ok';
-      // Actualizar datos locales
       if (!FULL_DATA.extraData) FULL_DATA.extraData = {};
       if (!FULL_DATA.extraData[currentStandId]) FULL_DATA.extraData[currentStandId] = {};
       FULL_DATA.extraData[currentStandId].n = feriante;
-      // Ocultar sección de asignación tras el éxito
       setTimeout(() => {
         document.getElementById('assignSection').style.display = 'none';
       }, 1800);
