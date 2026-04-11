@@ -681,20 +681,23 @@ let FULL_DATA = {}, currentFloor = 'pb', currentFilter = 'todos';
 let FERIANTES_LIST = [];
 let currentStandId = null;
 let soloMisVentas  = false;
+let PRECIOS_MOB    = {};   // { 'Mesa': 1500, 'Pupitre Doble': 2000, ... }
 
 async function load() {
   try {
-    const [resMap, resFeriantes] = await Promise.all([
+    const [resMap, resFeriantes, resPrecios] = await Promise.all([
       fetch(API_URL),
-      fetch(API_URL + '?tipo=feriantes')
+      fetch(API_URL + '?tipo=feriantes'),
+      fetch(API_URL + '?tipo=precios')
     ]);
     FULL_DATA = await resMap.json();
     const ferData = await resFeriantes.json();
     if (ferData.ok && ferData.feriantes) {
       FERIANTES_LIST = ferData.feriantes;
-      // ❌ ELIMINADO:
-      // const sel = document.getElementById('assignSelect');
-      // sel.innerHTML = ...
+    }
+    const precData = await resPrecios.json();
+    if (precData.ok && precData.precios) {
+      PRECIOS_MOB = precData.precios;
     }
     buildGrid('grid-pb', FULL_DATA.pbData);
     buildGrid('grid-pa', FULL_DATA.paData);
@@ -917,15 +920,13 @@ function checkAssignBtn() {
   const feriante = selectedFeriante;
   const monto    = Number(document.getElementById('assignMonto').value);
   const medio    = document.getElementById('assignMedio').value.trim();
-  const data     = (FULL_DATA.pbData||{})[currentStandId] || (FULL_DATA.paData||{})[currentStandId] || {};
-  const extra    = (FULL_DATA.extraData||{})[currentStandId] || {};
-  const precio   = Number(extra.pr || data.pr || 0);
+  const { total: precio } = calcTotalConMob();
   const btn      = document.getElementById('assignBtn');
   const msgEl    = document.getElementById('assignMsg');
 
-  // Validar monto vs precio
+  // Validar monto vs precio total (stand + mobiliario)
   if (monto > 0 && precio > 0 && monto > precio) {
-    msgEl.textContent = `El monto no puede superar el precio del stand ($${precio.toLocaleString('es-AR')}).`;
+    msgEl.textContent = `El monto no puede superar el precio total ($${precio.toLocaleString('es-AR')}).`;
     msgEl.className   = 'assign-msg err';
     btn.disabled = true;
     return;
@@ -1012,11 +1013,10 @@ async function asignarFeriante() {
   if (!monto || monto <= 0) { msgEl.textContent = 'Ingresá un monto válido.'; msgEl.className = 'assign-msg err'; return; }
   if (!medio) { msgEl.textContent = 'Seleccioná un medio de pago.'; msgEl.className = 'assign-msg err'; return; }
 
-  // Validar monto vs precio del stand
-  const extra  = (FULL_DATA.extraData||{})[currentStandId] || {};
-  const precio = Number(extra.pr || 0);
+  // Validar monto vs precio total del stand + mobiliario
+  const { total: precio } = calcTotalConMob();
   if (precio > 0 && monto > precio) {
-    msgEl.textContent = `El monto no puede superar el precio del stand ($${precio.toLocaleString('es-AR')}).`;
+    msgEl.textContent = `El monto no puede superar el precio total ($${precio.toLocaleString('es-AR')}).`;
     msgEl.className = 'assign-msg err';
     return;
   }
@@ -1430,18 +1430,63 @@ function resetMobQty() {
   MOB_ITEMS.forEach(m => { mobQty[m.key] = 0; });
 }
 
+// Calcula precio base del stand + mobiliario seleccionado
+function calcTotalConMob() {
+  const extra     = (FULL_DATA.extraData||{})[currentStandId] || {};
+  const precioBase = Number(extra.pr || 0);
+  const precioMob  = MOB_ITEMS.reduce((sum, m) => {
+    const qty   = mobQty[m.key] || 0;
+    const price = PRECIOS_MOB[m.label] || 0;
+    return sum + qty * price;
+  }, 0);
+  return { base: precioBase, mob: precioMob, total: precioBase + precioMob };
+}
+
+// Actualiza los boxes de Total y Debe en el modal con el nuevo total
+function updatePrecioModal() {
+  const data  = (FULL_DATA.pbData||{})[currentStandId] || (FULL_DATA.paData||{})[currentStandId] || {};
+  if ((data.e || 'Disponible') !== 'Disponible') return;
+
+  const { base, mob, total } = calcTotalConMob();
+  if (total === 0) return;
+
+  const moneyEl = document.getElementById('modalMoney');
+  moneyEl.style.display = 'flex';
+
+  // Total: precio base + mobiliario
+  const totalEl = document.getElementById('modalTotal');
+  if (mob > 0) {
+    totalEl.innerHTML = `$${total.toLocaleString('es-AR')} <span style="font-size:11px;font-weight:500;color:#64748b;display:block">Stand $${base.toLocaleString('es-AR')} + Mob $${mob.toLocaleString('es-AR')}</span>`;
+  } else {
+    totalEl.textContent = `$${total.toLocaleString('es-AR')}`;
+  }
+
+  // Debe: igual al total (en stand disponible todavía no pagó nada)
+  document.getElementById('modalDebe').textContent = `$${total.toLocaleString('es-AR')}`;
+  document.getElementById('modalDebeBox').className = 'money-box debe-mal';
+
+  // También actualizar el límite de validación del monto de seña
+  const assignMonto = document.getElementById('assignMonto');
+  if (assignMonto) assignMonto.dataset.maxPrecio = total;
+  checkAssignBtn();
+}
+
 function openMobPanel() {
-  // Construir la lista de contadores
+  // Construir la lista de contadores con precio por ítem si está disponible
   const list = document.getElementById('mobList');
-  list.innerHTML = MOB_ITEMS.map(m => `
+  list.innerHTML = MOB_ITEMS.map(m => {
+    const precio = PRECIOS_MOB[m.label];
+    const precioStr = precio ? `<span style="font-size:12px;color:#64748b;font-weight:500">$${precio.toLocaleString('es-AR')}</span>` : '';
+    return `
     <div class="mob-item">
-      <div class="mob-item-name">${m.label}</div>
+      <div class="mob-item-name">${m.label} ${precioStr}</div>
       <div class="mob-counter">
         <button class="mob-btn minus" onclick="changeMobQty('${m.key}',-1)">−</button>
         <span class="mob-qty" id="mqty_${m.key}">${mobQty[m.key]||0}</span>
         <button class="mob-btn" onclick="changeMobQty('${m.key}',1)">+</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   document.getElementById('mainPanel').classList.add('hidden');
   document.getElementById('altaPanel').classList.remove('active');
   document.getElementById('mobPanel').classList.add('active');
@@ -1451,6 +1496,7 @@ function closeMobPanel() {
   document.getElementById('mobPanel').classList.remove('active');
   document.getElementById('mainPanel').classList.remove('hidden');
   updateMobSummary();
+  updatePrecioModal();   // ← recalcular precio al confirmar mobiliario
 }
 
 function changeMobQty(key, delta) {
