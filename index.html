@@ -18,11 +18,18 @@
   header { background:#1e293b; color:white; padding:8px 12px 6px; position:sticky; top:0; z-index:100; box-shadow:0 2px 8px rgba(0,0,0,.3); }
   header h1 { font-size:17px; font-weight:700; letter-spacing:-.3px; }
   header p  { font-size:12px; opacity:.65; margin-top:1px; }
-  .stats { display:flex; gap:8px; padding:10px 14px; background:#1e293b; border-top:1px solid rgba(255,255,255,.1); overflow-x:auto; scrollbar-width:none; }
+  .stats { display:flex; gap:8px; padding:10px 14px; background:#1e293b; border-top:1px solid rgba(255,255,255,.1); overflow-x:auto; scrollbar-width:none; align-items:center; }
   .stats::-webkit-scrollbar { display:none; }
   .stat-pill { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.1); border-radius:20px; padding:5px 12px; white-space:nowrap; font-size:12px; color:white; }
   .stat-pill .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .stat-pill strong { font-weight:700; margin-left:2px; }
+  .ocupacion-badge {
+    margin-left:auto; padding-left:14px; flex-shrink:0;
+    display:flex; flex-direction:column; align-items:center;
+    border-left:1px solid rgba(255,255,255,.2);
+  }
+  .ocupacion-pct { font-size:22px; font-weight:700; color:white; line-height:1; }
+  .ocupacion-lbl { font-size:10px; color:rgba(255,255,255,.55); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
   .tabs { display:flex; background:white; border-bottom:2px solid #e2e8f0; position:sticky; top:70px; z-index:90; }
   .tab-btn { flex:1; padding:12px 8px; font-size:14px; font-weight:600; font-family:var(--font); border:none; background:none; cursor:pointer; color:#64748b; border-bottom:3px solid transparent; margin-bottom:-2px; transition:all .2s; }
   .tab-btn.active { color:#1e293b; border-bottom-color:#1e293b; }
@@ -774,11 +781,19 @@ function buildGrid(gridId, data) {
 function buildStats() {
   const all = [...Object.values(FULL_DATA.pbData||{}), ...Object.values(FULL_DATA.paData||{})];
   const count = e => all.filter(s=>s.e===e).length;
+  const total = all.length;
+  const disponibles = count('Disponible');
+  const ocupados = total - disponibles;
+  const pct = total > 0 ? Math.round((ocupados / total) * 100) : 0;
   document.getElementById('statsBar').innerHTML = `
-    <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Total <strong>${all.length}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Total <strong>${total}</strong></div>
     <div class="stat-pill"><div class="dot" style="background:var(--pagado)"></div>Pagado <strong>${count('Pagado')}</strong></div>
     <div class="stat-pill"><div class="dot" style="background:var(--senado)"></div>Señado <strong>${count('Señado')}</strong></div>
-    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${count('Disponible')}</strong></div>`;
+    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${disponibles}</strong></div>
+    <div class="ocupacion-badge">
+      <span class="ocupacion-pct">${pct}%</span>
+      <span class="ocupacion-lbl">Ocupación</span>
+    </div>`;
 }
 
 function switchFloor(f, btn) {
