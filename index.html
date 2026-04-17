@@ -24,9 +24,9 @@
   .stat-pill .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .stat-pill strong { font-weight:700; margin-left:2px; }
   .ocupacion-badge {
-    padding-left:14px; flex-shrink:0;
+    padding-right:14px; flex-shrink:0;
     display:flex; flex-direction:column; align-items:center;
-    border-left:1px solid rgba(255,255,255,.2);
+    border-right:1px solid rgba(255,255,255,.2);
   }
   .ocupacion-pct { font-size:22px; font-weight:700; color:white; line-height:1; }
   .ocupacion-lbl { font-size:10px; color:rgba(255,255,255,.55); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
@@ -787,14 +787,14 @@ function buildStats() {
   const ocupados = total - disponibles;
   const pct = total > 0 ? Math.round((ocupados / total) * 100) : 0;
   document.getElementById('statsBar').innerHTML = `
-    <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Total <strong>${total}</strong></div>
-    <div class="stat-pill"><div class="dot" style="background:var(--pagado)"></div>Pagado <strong>${count('Pagado')}</strong></div>
-    <div class="stat-pill"><div class="dot" style="background:var(--senado)"></div>Señado <strong>${count('Señado')}</strong></div>
-    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${disponibles}</strong></div>
     <div class="ocupacion-badge">
       <span class="ocupacion-pct">${pct}%</span>
       <span class="ocupacion-lbl">Ocupación</span>
-    </div>`;
+    </div>
+    <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Total <strong>${total}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:var(--pagado)"></div>Pagado <strong>${count('Pagado')}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:var(--senado)"></div>Señado <strong>${count('Señado')}</strong></div>
+    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${disponibles}</strong></div>`;
 }
 
 function switchFloor(f, btn) {
