@@ -24,9 +24,9 @@
   .stat-pill .dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
   .stat-pill strong { font-weight:700; margin-left:2px; }
   .ocupacion-badge {
-    padding-right:14px; flex-shrink:0;
+    margin-left:auto; padding-left:14px; flex-shrink:0;
     display:flex; flex-direction:column; align-items:center;
-    border-right:1px solid rgba(255,255,255,.2);
+    border-left:1px solid rgba(255,255,255,.2);
   }
   .ocupacion-pct { font-size:22px; font-weight:700; color:white; line-height:1; }
   .ocupacion-lbl { font-size:10px; color:rgba(255,255,255,.55); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
@@ -69,14 +69,15 @@
 
   /* ── BADGE CONTRATO ── */
   .contrato-badge {
-    position:absolute; top:4px; right:5px;
-    width:20px; height:20px;
-    background:#1e293b; border-radius:50%;
-    display:flex; align-items:center; justify-content:center;
-    font-size:11px; line-height:1;
-    box-shadow:0 1px 4px rgba(0,0,0,.35);
+    position:absolute; top:2px; right:4px;
+    font-size:15px; line-height:1;
     z-index:2; pointer-events:none;
-    flex-shrink:0;
+  }
+  /* ── BADGE MOBILIARIO ── */
+  .mob-badge {
+    position:absolute; top:2px; left:4px;
+    font-size:15px; line-height:1;
+    z-index:2; pointer-events:none;
   }
   .legend { padding:12px 14px 20px; display:flex; flex-wrap:wrap; gap:8px; }
   .leg-item { display:flex; align-items:center; gap:6px; font-size:12px; color:#475569; font-weight:500; }
@@ -508,7 +509,8 @@
   <div class="leg-item"><div class="leg-dot" style="background:var(--senado)"></div> Señado</div>
   <div class="leg-item"><div class="leg-dot" style="background:var(--disp);border:2px solid #9333ea"></div> Disponible</div>
   <div class="leg-item"><div class="leg-dot" style="background:var(--excedido)"></div> Excedido</div>
-  <div class="leg-item"><div class="leg-dot" style="background:#1e293b;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px">✍️</div> Contrato firmado</div>
+  <div class="leg-item"><span style="font-size:15px;line-height:1">✍️</span> Contrato firmado</div>
+  <div class="leg-item"><span style="font-size:15px;line-height:1">🪑</span> Tiene mobiliario</div>
 </div>
 
 <div class="zoom-controls">
@@ -757,6 +759,7 @@ function buildGrid(gridId, data) {
         const precio = extra.pr;
         const resp   = extra.p1r || '';  // responsable = quien hizo la asignación (pago 1)
         const contrato = extra.contrato === 'SI';
+        const tieneMob = MOB_ITEMS.some(m => Number(extra[m.key]||0) > 0);
         const rubTrunc = s.rb ? (s.rb.length>22 ? s.rb.slice(0,20)+'…' : s.rb) : '';
         const searchLabel = s.e==='Disponible' ? (nombre||rubTrunc) : rubTrunc;
         html += `<div class="stand" data-num="${s.num}" data-e="${s.e}"
@@ -767,6 +770,7 @@ function buildGrid(gridId, data) {
           data-contrato="${contrato ? 'SI' : 'NO'}"
           onclick="openModal('${s.num}')">
           ${contrato ? `<span class="contrato-badge" title="Contrato firmado">✍️</span>` : ''}
+          ${tieneMob ? `<span class="mob-badge" title="Tiene mobiliario">🪑</span>` : ''}
           <span class="snum">${s.num}</span>
           ${searchLabel ? `<span class="srub">${searchLabel.length>22?searchLabel.slice(0,20)+'…':searchLabel}</span>` : ''}
           ${s.e==='Disponible'&&precio ? `<span class="srub" style="font-weight:700">$${Number(precio).toLocaleString('es-AR')}</span>` : ''}
@@ -787,14 +791,14 @@ function buildStats() {
   const ocupados = total - disponibles;
   const pct = total > 0 ? Math.round((ocupados / total) * 100) : 0;
   document.getElementById('statsBar').innerHTML = `
-    <div class="ocupacion-badge">
-      <span class="ocupacion-pct">${pct}%</span>
-      <span class="ocupacion-lbl">Ocupación</span>
-    </div>
     <div class="stat-pill"><div class="dot" style="background:#64748b"></div>Total <strong>${total}</strong></div>
     <div class="stat-pill"><div class="dot" style="background:var(--pagado)"></div>Pagado <strong>${count('Pagado')}</strong></div>
     <div class="stat-pill"><div class="dot" style="background:var(--senado)"></div>Señado <strong>${count('Señado')}</strong></div>
-    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${disponibles}</strong></div>`;
+    <div class="stat-pill"><div class="dot" style="background:#e2e8f0;border:1px solid #9333ea"></div>Disponible <strong>${disponibles}</strong></div>
+    <div class="ocupacion-badge">
+      <span class="ocupacion-pct">${pct}%</span>
+      <span class="ocupacion-lbl">Ocupación</span>
+    </div>`;
 }
 
 function switchFloor(f, btn) {
