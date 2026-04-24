@@ -562,7 +562,8 @@
         <input type="text" class="assign-search-input" id="assignSearch"
           placeholder="Buscar feriante por nombre..."
           autocomplete="off" autocorrect="off" spellcheck="false"
-          oninput="filterFeriantes()" onfocus="filterFeriantes()">
+          oninput="filterFeriantes()" onfocus="filterFeriantes()"
+          onblur="setTimeout(()=>document.getElementById('assignDropdown').classList.remove('open'),150)">
         <button class="assign-search-clear" id="assignSearchClear" onclick="clearAssignSearch()">×</button>
         <div class="assign-dropdown" id="assignDropdown"></div>
       </div>
