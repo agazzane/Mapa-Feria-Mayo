@@ -63,6 +63,7 @@
   .stand[data-e="Excedido"]   { background:var(--excedido); color:var(--excedido-t); box-shadow:0 1px 4px rgba(0,0,0,.15); }
   .stand.dimmed      { opacity:.18; pointer-events:none; }
   .stand.highlighted { box-shadow:0 0 0 3px #1e293b; transform:scale(1.06); z-index:5; }
+  .stand.ingresado   { box-shadow:0 0 0 2.5px #2563eb !important; }
   .stand .snum { font-size:24px; font-weight:700; line-height:1; letter-spacing:-.5px; }
   .stand .srub { font-size:13px; font-weight:500; line-height:1.2; margin-top:3px; max-width:100%; word-break:break-word; hyphens:auto; opacity:.85; }
   .empty { min-width:136px; min-height:62px; background:transparent; }
@@ -699,7 +700,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.8';   // ← cambiá solo acá
+const APP_VERSION = 'v1.9';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -760,9 +761,10 @@ function buildGrid(gridId, data) {
         const resp   = extra.p1r || '';  // responsable = quien hizo la asignación (pago 1)
         const contrato = extra.contrato === 'SI';
         const tieneMob = MOB_ITEMS.some(m => Number(extra[m.key]||0) > 0);
+        const ingreso  = extra.ingreso === 'SI';
         const rubTrunc = s.rb ? (s.rb.length>22 ? s.rb.slice(0,20)+'…' : s.rb) : '';
         const searchLabel = s.e==='Disponible' ? (nombre||rubTrunc) : rubTrunc;
-        html += `<div class="stand" data-num="${s.num}" data-e="${s.e}"
+        html += `<div class="stand${ingreso ? ' ingresado' : ''}" data-num="${s.num}" data-e="${s.e}"
           data-rb="${(s.rb||'').replace(/"/g,'&quot;')}"
           data-n="${nombre.replace(/"/g,'&quot;')}"
           data-z="${(s.z||'').replace(/"/g,'&quot;')}"
