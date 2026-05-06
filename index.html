@@ -597,6 +597,15 @@
         </div>
       </div>
       <button class="assign-btn" id="assignBtn" onclick="asignarFeriante()" disabled>Asignar y señar</button>
+      <!-- Combo vendedor seña: solo visible para Admin (3) -->
+      <div class="assign-pago-group" id="assignVendedorGroup" style="display:none;margin-top:4px">
+        <label class="assign-pago-label">Registrar en nombre de</label>
+        <div class="assign-pago-select-wrap">
+          <select class="assign-pago-select" id="assignVendedor">
+            <option value="">— Elegí vendedor —</option>
+          </select>
+        </div>
+      </div>
       <div class="assign-msg" id="assignMsg"></div>
     </div>
 
@@ -624,6 +633,15 @@
                 <option value="">Cargando...</option>
               </select>
             </div>
+          </div>
+        </div>
+        <!-- Combo vendedor: solo visible para perfil Admin (3) -->
+        <div class="pago-input-group" id="pagoVendedorGroup" style="display:none;margin-top:4px">
+          <label class="pago-label">Registrar en nombre de</label>
+          <div class="pago-select-wrap">
+            <select class="pago-select" id="pagoVendedor">
+              <option value="">— Elegí vendedor —</option>
+            </select>
           </div>
         </div>
         <button class="pago-btn" id="pagoBtn" onclick="cargarPago()">Registrar pago</button>
@@ -700,7 +718,7 @@ let lastTap = 0;
 document.addEventListener('touchend', e => { const now=Date.now(); if(now-lastTap<300) e.preventDefault(); lastTap=now; }, {passive:false});
 
 // ── VERSIÓN DE LA APP ────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.9';   // ← cambiá solo acá
+const APP_VERSION = 'v2.0';   // ← cambiá solo acá
 document.addEventListener('DOMContentLoaded', () => {
   const lv = document.getElementById('loginVersion');
   const hv = document.getElementById('headerVersion');
@@ -712,6 +730,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbw1KPZO2gNyjKoj8GDdoG6Q
 
 let FULL_DATA = {}, currentFloor = 'pb', currentFilter = 'todos';
 let FERIANTES_LIST = [];
+let VENDEDORES_LIST = [];  // solo usuarios con perfil 1, para el Admin
 let currentStandId = null;
 let soloMisVentas  = false;
 let PRECIOS_MOB    = {};   // { 'Mesa': 1500, 'Pupitre Doble': 2000, ... }
@@ -910,9 +929,9 @@ function openModal(id) {
   resetMobQty();
   updateMobSummary();
 
-  // Sección asignar feriante: solo para Disponibles Y VENDEDORES
+  // Sección asignar feriante: solo para Disponibles Y VENDEDORES o ADMIN
   const assignSection = document.getElementById('assignSection');
-  if (estado === 'Disponible' && CURRENT_PERFIL === 1) {
+  if (estado === 'Disponible' && (CURRENT_PERFIL === 1 || CURRENT_PERFIL === 3)) {
     assignSection.style.display = 'block';
     resetAssignUI();
   } else {
@@ -959,6 +978,16 @@ function resetAssignUI() {
         MEDIOS_PAGO.map(m => `<option value="${m}">${m}</option>`).join('');
     } else {
       sel.innerHTML = '<option value="">Sin medios cargados</option>';
+    }
+    // Combo vendedor seña: solo para Admin
+    const vendedorGroup = document.getElementById('assignVendedorGroup');
+    const vendedorSel   = document.getElementById('assignVendedor');
+    if (CURRENT_PERFIL === 3 && VENDEDORES_LIST.length) {
+      vendedorGroup.style.display = 'block';
+      vendedorSel.innerHTML = '<option value="">— Elegí vendedor —</option>' +
+        VENDEDORES_LIST.map(v => `<option value="${v}">${v}</option>`).join('');
+    } else {
+      vendedorGroup.style.display = 'none';
     }
   });
 }
@@ -1060,6 +1089,13 @@ async function asignarFeriante() {
   if (!monto || monto <= 0) { msgEl.textContent = 'Ingresá un monto válido.'; msgEl.className = 'assign-msg err'; return; }
   if (!medio) { msgEl.textContent = 'Seleccioná un medio de pago.'; msgEl.className = 'assign-msg err'; return; }
 
+  // Vendedor: si Admin, debe elegir en nombre de quién registra
+  let vendedor = '';
+  if (CURRENT_PERFIL === 3) {
+    vendedor = (document.getElementById('assignVendedor').value || '').trim();
+    if (!vendedor) { msgEl.textContent = 'Seleccioná el vendedor en nombre del cual registrás la asignación.'; msgEl.className = 'assign-msg err'; return; }
+  }
+
   // Validar monto vs precio total del stand + mobiliario
   const { total: precio } = calcTotalConMob();
   if (precio > 0 && monto > precio) {
@@ -1074,8 +1110,10 @@ async function asignarFeriante() {
 
   try {
     // Paso 1: asignar feriante (+ mobiliario)
+    // El responsable de la asignación es el vendedor elegido (Admin) o el usuario logueado
+    const responsableAsign = (CURRENT_PERFIL === 3 && vendedor) ? vendedor : CURRENT_USER;
     const mobParams = MOB_ITEMS.map(m => `${m.key}=${mobQty[m.key]||0}`).join('&');
-    const urlAsignar = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(CURRENT_USER)}&${mobParams}`;
+    const urlAsignar = `${API_URL}?tipo=asignar&stand=${encodeURIComponent(currentStandId)}&feriante=${encodeURIComponent(feriante)}&user=${encodeURIComponent(responsableAsign)}&${mobParams}`;
     const resAsignar = await fetch(urlAsignar);
     const dataAsignar = await resAsignar.json();
     if (!dataAsignar.ok) {
@@ -1087,7 +1125,8 @@ async function asignarFeriante() {
     }
 
     // Paso 2: registrar pago 1
-    const urlPago = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=1&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const vendedorParam = (CURRENT_PERFIL === 3 && vendedor) ? `&vendedor=${encodeURIComponent(vendedor)}` : '';
+    const urlPago = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=1&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}${vendedorParam}`;
     const resPago = await fetch(urlPago);
     const dataPago = await resPago.json();
     if (!dataPago.ok) {
@@ -1164,7 +1203,7 @@ function centerMap() {
 }
 // ── LOGIN ────────────────────────────────────────────────────────────────────
 let CURRENT_USER   = null;
-let CURRENT_PERFIL = 1;   // 1=VENDEDOR (default), 2=VISUALIZADOR
+let CURRENT_PERFIL = 1;   // 1=VENDEDOR, 2=VISUALIZADOR, 3=ADMIN
 
 async function initLogin() {
   // ¿Ya hay sesión activa?
@@ -1180,8 +1219,13 @@ async function initLogin() {
     const data = await res.json();
     const sel  = document.getElementById('loginUser');
     if (data.ok && data.usuarios.length) {
+      // Guardar vendedores (perfil 1) para el combo del Admin
+      VENDEDORES_LIST = data.usuarios
+        .filter(u => u.perfil === 1)
+        .map(u => u.nombre);
+      // Poblar combo de login solo con los nombres
       sel.innerHTML = '<option value="">— Elegí tu usuario —</option>' +
-        data.usuarios.map(u => `<option value="${u}">${u}</option>`).join('');
+        data.usuarios.map(u => `<option value="${u.nombre}">${u.nombre}</option>`).join('');
     } else {
       sel.innerHTML = '<option value="">Error al cargar usuarios</option>';
     }
@@ -1232,6 +1276,9 @@ function activarSesion(user, perfil) {
   if (perfilBadge) {
     if (CURRENT_PERFIL === 2) {
       perfilBadge.textContent = '👁 VISUALIZADOR';
+      perfilBadge.style.display = 'inline';
+    } else if (CURRENT_PERFIL === 3) {
+      perfilBadge.textContent = '🔑 ADMIN';
       perfilBadge.style.display = 'inline';
     } else {
       perfilBadge.textContent = '';
@@ -1314,6 +1361,16 @@ function renderPagos(extra) {
     } else {
       sel.innerHTML = '<option value="">Sin medios cargados</option>';
     }
+    // Combo vendedor: solo para Admin
+    const vendedorGroup = document.getElementById('pagoVendedorGroup');
+    const vendedorSel   = document.getElementById('pagoVendedor');
+    if (CURRENT_PERFIL === 3 && VENDEDORES_LIST.length) {
+      vendedorGroup.style.display = 'block';
+      vendedorSel.innerHTML = '<option value="">— Elegí vendedor —</option>' +
+        VENDEDORES_LIST.map(v => `<option value="${v}">${v}</option>`).join('');
+    } else {
+      vendedorGroup.style.display = 'none';
+    }
   });
 }
 
@@ -1329,11 +1386,20 @@ async function cargarPago() {
   if (!monto || monto <= 0) { msgEl.textContent = 'Ingresá un monto válido.'; msgEl.className='pago-msg err'; return; }
   if (monto > debe)         { msgEl.textContent = `El monto no puede superar el Debe ($${debe.toLocaleString('es-AR')}).`; msgEl.className='pago-msg err'; return; }
   if (!medio)               { msgEl.textContent = 'Seleccioná un medio de pago.'; msgEl.className='pago-msg err'; return; }
+
+  // Vendedor: si Admin, puede elegir en nombre de quién registra
+  let vendedor = '';
+  if (CURRENT_PERFIL === 3) {
+    vendedor = (document.getElementById('pagoVendedor').value || '').trim();
+    if (!vendedor) { msgEl.textContent = 'Seleccioná el vendedor en nombre del cual registrás el pago.'; msgEl.className='pago-msg err'; return; }
+  }
+
   if (!currentStandId)      return;
   btn.disabled    = true;
   btn.textContent = 'Guardando...';
   try {
-    const url  = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=${pagoNumActual}&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}`;
+    const vendedorParam = vendedor ? `&vendedor=${encodeURIComponent(vendedor)}` : '';
+    const url  = `${API_URL}?tipo=pago&stand=${encodeURIComponent(currentStandId)}&num=${pagoNumActual}&monto=${monto}&medio=${encodeURIComponent(medio)}&user=${encodeURIComponent(CURRENT_USER)}${vendedorParam}`;
     const res  = await fetch(url);
     const data = await res.json();
     if (data.ok) {
