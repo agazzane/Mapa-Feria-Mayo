@@ -40,26 +40,24 @@
 
   /* ── HEADER ── */
   header {
-    background: rgba(255,255,255,.88);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 1px solid var(--border);
+    background: #1a2236;
+    border-bottom: 1px solid rgba(255,255,255,.08);
     padding: 10px 16px;
     position: sticky; top: 0; z-index: 100;
     display: flex; align-items: center; gap: 12px;
   }
   .header-logo-sq {
     width: 38px; height: 38px; border-radius: 10px;
-    background: var(--accent);
+    background: rgba(255,255,255,.12);
     display: flex; align-items: center; justify-content: center;
     font-size: 20px; flex-shrink: 0;
   }
   .header-text { flex: 1; min-width: 0; }
   header h1 {
     font-size: 16px; font-weight: 700;
-    color: var(--text); letter-spacing: -.3px; line-height: 1.2;
+    color: #ffffff; letter-spacing: -.3px; line-height: 1.2;
   }
-  header p { font-size: 11px; color: var(--text3); margin-top: 1px; }
+  header p { font-size: 11px; color: rgba(255,255,255,.5); margin-top: 1px; }
   .login-user-pill {
     flex-shrink: 0;
   }
@@ -72,25 +70,23 @@
   }
   .occ-detail-item .val { font-size: 18px; font-weight: 700; line-height: 1; }
   .occ-detail-item .lbl { font-size: 10px; font-weight: 500; margin-top: 2px; opacity: .7; }
-  .occ-pagado { background: #d1f5de; }
-  .occ-pagado .val { color: #0a4d21; }
-  .occ-pagado .lbl { color: #0a4d21; }
-  .occ-senado { background: #fff3b0; }
-  .occ-senado .val { color: #6b4a00; }
-  .occ-senado .lbl { color: #6b4a00; }
-  .occ-libre  { background: #f2f2f7; border: 1px solid var(--border); }
-  .occ-libre  .val { color: #3a3a3c; }
-  .occ-libre  .lbl { color: #636366; }
-  .occ-total  { background: #e8e8ed; }
-  .occ-total  .val { color: var(--text); }
-  .occ-total  .lbl { color: var(--text3); }
+  .occ-pagado { background: rgba(48,209,88,.18); }
+  .occ-pagado .val { color: #30d158; }
+  .occ-pagado .lbl { color: #30d158; }
+  .occ-senado { background: rgba(255,214,10,.18); }
+  .occ-senado .val { color: #ffd60a; }
+  .occ-senado .lbl { color: #ffd60a; }
+  .occ-libre  { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); }
+  .occ-libre  .val { color: rgba(255,255,255,.85); }
+  .occ-libre  .lbl { color: rgba(255,255,255,.5); }
+  .occ-total  { background: rgba(255,255,255,.1); }
+  .occ-total  .val { color: #ffffff; }
+  .occ-total  .lbl { color: rgba(255,255,255,.5); }
 
   /* ── BARRA DE OCUPACIÓN ── */
   .occ-bar-wrap {
-    background: rgba(255,255,255,.88);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
-    border-bottom: 1px solid var(--border);
+    background: #212d42;
+    border-bottom: 1px solid rgba(255,255,255,.08);
     padding: 12px 16px 14px;
   }
   .occ-bar-header {
@@ -98,15 +94,15 @@
     margin-bottom: 10px;
   }
   .occ-bar-title {
-    font-size: 10px; font-weight: 600; color: var(--text3);
+    font-size: 10px; font-weight: 600; color: rgba(255,255,255,.45);
     text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px;
   }
-  .occ-bar-pct { font-size: 30px; font-weight: 700; color: var(--text); line-height: 1; letter-spacing: -.5px; }
+  .occ-bar-pct { font-size: 30px; font-weight: 700; color: #ffffff; line-height: 1; letter-spacing: -.5px; }
   .occ-detail { display: flex; gap: 14px; }
-  .occ-detail-item .val { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1; }
-  .occ-detail-item .lbl { font-size: 10px; color: var(--text3); margin-top: 2px; text-align: right; font-weight: 500; }
+  .occ-detail-item .val { font-size: 15px; font-weight: 700; color: #ffffff; line-height: 1; }
+  .occ-detail-item .lbl { font-size: 10px; color: rgba(255,255,255,.45); margin-top: 2px; text-align: right; font-weight: 500; }
   .occ-bar-track {
-    width: 100%; height: 8px; background: #e5e5ea;
+    width: 100%; height: 8px; background: rgba(255,255,255,.12);
     border-radius: 4px; overflow: hidden; display: flex;
   }
   .occ-bar-seg { height: 100%; transition: width .6s cubic-bezier(.34,1.2,.64,1); }
@@ -114,7 +110,7 @@
   .occ-bar-seg#occSegSenado { background: #ffd60a; }
   .occ-bar-seg#occSegDisp   { background: #e5e5ea; }
   .occ-bar-legend { display: flex; justify-content: space-between; margin-top: 6px; }
-  .occ-bar-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--text3); font-weight: 500; }
+  .occ-bar-item { display: flex; align-items: center; gap: 4px; font-size: 10px; color: rgba(255,255,255,.45); font-weight: 500; }
   .occ-bar-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
   /* ── STATS (oculto) ── */
@@ -319,12 +315,12 @@
   .login-error { color: #ff3b30; font-size: 12px; font-weight: 500; text-align: center; margin-top: 12px; min-height: 16px; }
   .login-user-pill {
     display: inline-flex; align-items: center; gap: 5px;
-    background: rgba(0,0,0,.08); border-radius: 100px;
-    padding: 3px 10px 3px 7px; font-size: 11px; color: var(--text2);
+    background: rgba(255,255,255,.12); border-radius: 100px;
+    padding: 3px 10px 3px 7px; font-size: 11px; color: rgba(255,255,255,.85);
     cursor: pointer; margin-left: 4px; vertical-align: middle; border: none;
     font-family: var(--font); font-weight: 500; transition: background .15s;
   }
-  .login-user-pill:hover { background: rgba(0,0,0,.14); }
+  .login-user-pill:hover { background: rgba(255,255,255,.2); }
 
   /* ── ASIGNAR FERIANTE ── */
   .assign-section { margin-top: 16px; padding: 14px 16px; background: #f5f3ff; border: 1.5px solid #a78bfa; border-radius: var(--radius); }
